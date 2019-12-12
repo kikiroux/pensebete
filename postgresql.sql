@@ -568,10 +568,6 @@ select now() - pg_postmaster_start_time();
 
 --genere  mot de passe hache md5 - 
 select 'md5'||md5('password'||'user')
-select 'md5'||md5('007@crPRD'||'srhdbacro') -- prod md5df995d2567b82399b7a21f2b3b0b6dd3
-select 'md5'||md5('007@crRCT'||'srhdbacro') -- rct md5a83e1dbafbf447e1ec27d63f0b510fb4
-select 'md5'||md5('mai@crPRD'||'srhdbacro') -- prod "md504f32d3a144f1cd49f3d7a3e37cc691b"
-select 'md5'||md5('mai@crRCT'||'srhdbacro') -- rct "md56418c00419ddee11defc8820779b120c"
 
 
 -- renvoie l'ensemble des currently active backend process IDs (backendid) (from 1 to the number of active backend processes)
@@ -729,13 +725,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE srhbatch IN SCHEMA dwhouse GRANT EXECUTE ON FU
 SELECT name, current_setting(name) FROM pg_settings
 WHERE name IN ('max_wal_size', 'checkpoint_timeout', 'wal_compression', 'wal_buffers');
 
--- current location où on ecrit dans les wal :
-SELECT pg_current_xlog_insert_location(); -- 3E/2203E0F8
--- on laisse passer 5 mn et on refait SELECT pg_current_xlog_insert_location(); -- 3D/B4020A58
-SELECT pg_xlog_location_diff('3E/2203E0F8', '3D/B4020A58')-- ; donne le resultat en octet de la quantité de données ecrites dans les wal en 5 mn
-select 1.0/1024/1024/1024* pg_xlog_location_diff('3E/2203E0F8', '3D/B4020A58'); -- donne le resultat en Mo : 1.718862205
---en 5 mn , la base a généré  ~1.8GB de WAL, donc pour checkpoint_timeout = 30min cela fera environ 10 GB (1.8 * 6) de WAL. toutefois  max_wal_size is a quota for 2 ou 3 checkpoints combinés, so max_wal_size = 30GB (3 x 10GB) semble etre une bonne va
--- leur
 -- cache hit ratio : doit être le plus proche de 1, sinon cela veut dire qu'il faut revoir shared_buffers.
 SELECT blks_hit::float/(blks_read + blks_hit) as cache_hit_ratio FROM pg_stat_database WHERE datname=current_database();
 -- ratio sur le nombre de transaction commité par rapport au nombre de transaction total doit être le + proche de 1, sinon cela veut dire qu'il y a trop de rollback
@@ -870,6 +859,16 @@ select spcname ,pg_tablespace_location(oid) from   pg_tablespace;
 select * from pg_tablespace;
 
 -- les wal   (https://docs.postgresql.fr/10/functions-admin.html#functions-admin-backup-table)
+		
+-- current location où on ecrit dans les wal :
+SELECT pg_current_xlog_insert_location(); -- 3E/2203E0F8
+-- on laisse passer 5 mn et on refait SELECT pg_current_xlog_insert_location(); -- 3D/B4020A58
+SELECT pg_xlog_location_diff('3E/2203E0F8', '3D/B4020A58')-- ; donne le resultat en octet de la quantité de données ecrites dans les wal en 5 mn
+select 1.0/1024/1024/1024* pg_xlog_location_diff('3E/2203E0F8', '3D/B4020A58'); -- donne le resultat en Mo : 1.718862205
+--en 5 mn , la base a généré  ~1.8GB de WAL, donc pour checkpoint_timeout = 30min cela fera environ 10 GB (1.8 * 6) de WAL. toutefois  max_wal_size is a quota for 2 ou 3 checkpoints combinés, so max_wal_size = 30GB (3 x 10GB) semble etre une bonne va
+-- leur
+		
+		
 pg_create_restore_point(name text)
 select pg_switch_wal()
 pg_current_wal_flush_lsn()
